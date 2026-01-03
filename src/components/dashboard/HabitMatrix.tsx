@@ -92,7 +92,17 @@ export const HabitMatrix = ({ habits, logs, weeks, onEditHabit }: HabitMatrixPro
     const getWeeklyTotal = (week: string) => {
         let total = 0;
         habits.forEach(habit => {
-            const status = optimisticLogs[`${habit.assignmentId}-${week}`] || "NEGRA";
+            const assignmentId = habit.assignmentId;
+            const logKey = `${assignmentId}-${week}`;
+
+            // Explicitly cast to BolaStatus to satisfy TypeScript index signature
+            let status = (optimisticLogs[logKey] || "NEGRA") as BolaStatus;
+
+            // Respect consolidation for scoring
+            if (status === "NEGRA" && habit.isConsolidated) {
+                status = "VERDE";
+            }
+
             total += SCORES[status];
         });
         return total.toFixed(2);
