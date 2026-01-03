@@ -71,20 +71,85 @@ export async function createHabit(formData: FormData) {
     revalidatePath("/");
 }
 
-export async function importHabitsFromCSV(formData: FormData) {
-    // This action would handle CSV parsing
-    // For now, we will just log that it's not implemented fully or mock it if needed
-    // In a real app, this would read the file from FormData, parse it (papaparse or csv-parse), 
-    // and recreate/upsert habits.
+import { parse } from 'csv-parse/sync';
 
-    // Placeholder implementation
-    console.log("Importing CSV...");
-    // Need to read 'csvFile' from formData if user uploaded one.
-    // Since the big button is currently just a trigger without <input type="file">, 
-    // we would need to implement the file selection UI first.
-    // For this instruction, I'll just leave it as a placeholder action linked to the button 
-    // to prevent crashes, but it won't do much yet without the client side file input.
+export async function importHabitsFromCSV(formData: FormData) {
+    const file = formData.get('csvFile') as File;
+
+    if (!file || file.size === 0) {
+        throw new Error("No se ha seleccionado ningún archivo.");
+    }
+
+    const text = await file.text();
+    const records = parse(text, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true
+    }) as any[];
+
+    const companyId = "foresvi-hq"; // Hardcoded for now
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const record of records) {
+        // Map Spanish CSV headers to DB fields
+        // Expected Headers: TEMA, HABITO, SEÑAL, ANHELO, RESPUESTA, RECOMPENSA, LINK
+        const name = record['HABITO'] || record['Nombre'] || record['name'];
+        const topic = record['TEMA'] || record['Tema'] || record['topic'];
+
+        if (!name || !topic) {
+            console.warn("Skipping invalid record:", record);
+            errorCount++;
+            continue;
+        }
+
+        try {
+            // Upsert based on Name (assuming unique name per habit for simplicity, or just create)
+            // To avoid duplicates, let's try to find first.
+            const existing = await prisma.habit.findFirst({
+                where: { name: name, companyId }
+            });
+
+            if (existing) {
+                // Update
+                await prisma.habit.update({
+                    where: { id: existing.id },
+                    data: {
+                        topic,
+                        cue: record['SEÑAL'] || record['Señal'] || record['cue'] || "",
+                        craving: record['ANHELO'] || record['Anhelo'] || record['craving'] || "",
+                        response: record['RESPUESTA'] || record['Respuesta'] || record['response'] || "",
+                        reward: record['RECOMPENSA'] || record['Recompensa'] || record['reward'] || "",
+                        externalLink: record['LINK'] || record['Link'] || record['externalLink'] || null,
+                        deletedAt: null // Restore if it was deleted
+                    }
+                });
+            } else {
+                // Create
+                await prisma.habit.create({
+                    data: {
+                        name,
+                        topic,
+                        cue: record['SEÑAL'] || record['Señal'] || record['cue'] || "",
+                        craving: record['ANHELO'] || record['Anhelo'] || record['craving'] || "",
+                        response: record['RESPUESTA'] || record['Respuesta'] || record['response'] || "",
+                        reward: record['RECOMPENSA'] || record['Recompensa'] || record['reward'] || "",
+                        externalLink: record['LINK'] || record['Link'] || record['externalLink'] || null,
+                        companyId
+                    }
+                });
+            }
+            successCount++;
+        } catch (e) {
+            console.error("Error importing habit:", name, e);
+            errorCount++;
+        }
+    }
+
     revalidatePath("/admin/habits");
+    revalidatePath("/");
+    return { success: true, count: successCount, errors: errorCount };
 }
 
 // NEW: Soft Delete Implementation

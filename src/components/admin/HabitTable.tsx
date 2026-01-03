@@ -78,17 +78,93 @@ export function HabitTable({ habits }: HabitTableProps) {
         }
     };
 
+    const downloadTemplate = () => {
+        const headers = ["TEMA", "HABITO", "SEÑAL", "ANHELO", "RESPUESTA", "RECOMPENSA", "LINK"];
+        const csvContent = headers.join(",") + "\n";
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "plantilla_habitos.csv";
+        link.click();
+    };
+
+    const exportCSV = () => {
+        const headers = ["TEMA", "HABITO", "SEÑAL", "ANHELO", "RESPUESTA", "RECOMPENSA", "LINK"];
+        const rows = habits.map(h => [
+            `"${h.topic || ''}"`,
+            `"${h.name || ''}"`,
+            `"${h.cue || ''}"`,
+            `"${h.craving || ''}"`,
+            `"${h.response || ''}"`,
+            `"${h.reward || ''}"`,
+            `"${h.externalLink || ''}"`
+        ].join(","));
+
+        const csvContent = headers.join(",") + "\n" + rows.join("\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `habitos_export_${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+    };
+
+    const handleImportClick = () => {
+        document.getElementById('csvInput')?.click();
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('csvFile', file);
+
+        if (window.confirm(`¿Importar hábitos desde "${file.name}"?`)) {
+            try {
+                const { importHabitsFromCSV } = await import("@/app/actions/habit-actions");
+                await importHabitsFromCSV(formData);
+                alert("Importación completada.");
+            } catch (err: any) {
+                alert("Error al importar: " + err.message);
+            }
+        }
+        // Reset input
+        e.target.value = '';
+    };
+
     return (
         <div className="space-y-4">
-            <div className="flex justify-between items-center">
-                <div className="flex gap-2 items-center">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="flex gap-2 items-center flex-wrap">
                     <button
                         onClick={() => setShowArchived(!showArchived)}
                         className={`text-xs px-3 py-1 rounded-full border transition-colors ${showArchived ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-300 hover:border-gray-800'}`}
                     >
                         {showArchived ? 'Ocultar Archivados' : 'Ver Archivados'}
                     </button>
-                    <span className="text-gray-300 mx-2">|</span>
+                    <span className="text-gray-300 mx-1">|</span>
+
+                    {/* Import/Export Controls */}
+                    <button onClick={downloadTemplate} className="text-xs text-gray-500 hover:text-brand-primary underline" title="Descargar plantilla CSV vacía">
+                        Plantilla
+                    </button>
+                    <button onClick={exportCSV} className="text-xs text-gray-500 hover:text-brand-primary underline" title="Exportar todos los hábitos a CSV">
+                        Exportar
+                    </button>
+                    <button onClick={handleImportClick} className="text-xs flex items-center gap-1 text-gray-500 hover:text-brand-primary underline" title="Subir CSV">
+                        <Upload className="w-3 h-3" /> Importar
+                    </button>
+                    <input
+                        type="file"
+                        id="csvInput"
+                        accept=".csv"
+                        className="hidden"
+                        onChange={handleFileChange}
+                    />
+
+                    <span className="text-gray-300 mx-1">|</span>
                     <button onClick={() => toggleAll(true)} className="text-xs text-brand-primary hover:underline font-bold">Expandir Todo</button>
                     <span className="text-gray-300">|</span>
                     <button onClick={() => toggleAll(false)} className="text-xs text-brand-primary hover:underline">Colapsar Todo</button>
@@ -96,7 +172,7 @@ export function HabitTable({ habits }: HabitTableProps) {
                 {!showArchived && (
                     <button
                         onClick={() => setIsCreating(true)}
-                        className="flex items-center gap-2 bg-brand-primary text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-blue-900 transition-colors"
+                        className="flex items-center gap-2 bg-brand-primary text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-blue-900 transition-colors whitespace-nowrap"
                     >
                         <Plus className="w-4 h-4" /> Nuevo Hábito
                     </button>
