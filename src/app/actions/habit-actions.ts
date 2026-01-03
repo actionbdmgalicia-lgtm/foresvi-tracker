@@ -88,13 +88,27 @@ export async function importHabitsFromCSV(formData: FormData) {
             return { success: false, error: "El archivo está vacío." };
         }
 
+        // Manual Delimiter Sniffing
+        // This fixes the "columns length is 1" error when auto-detection fails
+        const firstLine = text.split('\n')[0];
+        const commaCount = (firstLine.match(/,/g) || []).length;
+        const semiCount = (firstLine.match(/;/g) || []).length;
+        const tabCount = (firstLine.match(/\t/g) || []).length;
+
+        let detectedDelimiter = ',';
+        if (semiCount > commaCount && semiCount > tabCount) detectedDelimiter = ';';
+        else if (tabCount > commaCount && tabCount > semiCount) detectedDelimiter = '\t';
+
+        console.log(`Detected delimiter: '${detectedDelimiter}' (Comma: ${commaCount}, Semi: ${semiCount}, Tab: ${tabCount})`);
+
         const records = parse(text, {
             columns: true,
             skip_empty_lines: true,
             trim: true,
             bom: true,
-            delimiter: [',', ';', '\t'],
-            relax_quotes: true
+            delimiter: detectedDelimiter,
+            relax_quotes: true,
+            relax_column_count: true // Prevent crash if a row has extra/fewer fields
         }) as any[];
 
         const companyId = "foresvi-hq";
