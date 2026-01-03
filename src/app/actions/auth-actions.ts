@@ -12,7 +12,8 @@ export async function login(formData: FormData) {
     const password = formData.get("password") as string;
 
     if (!email || !password) {
-        return { error: "Email y contraseña requeridos" };
+        // return { error: "Email y contraseña requeridos" };
+        redirect("/login?error=FaltanDatos");
     }
 
     try {
@@ -21,13 +22,15 @@ export async function login(formData: FormData) {
         });
 
         if (!user) {
-            return { error: "Credenciales inválidas" };
+            // return { error: "Credenciales inválidas" };
+            redirect("/login?error=CredencialesInvalidas");
         }
 
         const isValid = await bcrypt.compare(password, user.password);
 
         if (!isValid) {
-            return { error: "Credenciales inválidas" };
+            // return { error: "Credenciales inválidas" };
+            redirect("/login?error=CredencialesInvalidas");
         }
 
         const cookieStore = await cookies();
@@ -39,8 +42,11 @@ export async function login(formData: FormData) {
         });
 
     } catch (error) {
+        if ((error as any).message?.includes('NEXT_REDIRECT')) {
+            throw error;
+        }
         console.error("Login error", error);
-        return { error: "Error interno del servidor" };
+        redirect("/login?error=ErrorServidor");
     }
 
     redirect("/");
