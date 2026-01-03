@@ -81,62 +81,68 @@ export async function importHabitsFromCSV(formData: FormData) {
     }
 
     const text = await file.text();
+
     const records = parse(text, {
         columns: true,
         skip_empty_lines: true,
-        trim: true
+        trim: true,
+        bom: true,
+        delimiter: [',', ';', '\t'],
+        relax_quotes: true
     }) as any[];
 
-    const companyId = "foresvi-hq"; // Hardcoded for now
+    const companyId = "foresvi-hq";
 
     let successCount = 0;
     let errorCount = 0;
 
+    // Helper to find value case-insensitively
+    const getValue = (record: any, keys: string[]) => {
+        const recordKeys = Object.keys(record);
+        for (const key of keys) {
+            const foundKey = recordKeys.find(k => k.trim().toUpperCase() === key.toUpperCase());
+            if (foundKey && record[foundKey]) return record[foundKey];
+        }
+        return "";
+    };
+
     for (const record of records) {
-        // Map Spanish CSV headers to DB fields
-        // Expected Headers: TEMA, HABITO, SEÑAL, ANHELO, RESPUESTA, RECOMPENSA, LINK
-        const name = record['HABITO'] || record['Nombre'] || record['name'];
-        const topic = record['TEMA'] || record['Tema'] || record['topic'];
+        const name = getValue(record, ['HABITO', 'NAME', 'NOMBRE']);
+        const topic = getValue(record, ['TEMA', 'TOPIC']);
 
         if (!name || !topic) {
-            console.warn("Skipping invalid record:", record);
             errorCount++;
             continue;
         }
 
         try {
-            // Upsert based on Name (assuming unique name per habit for simplicity, or just create)
-            // To avoid duplicates, let's try to find first.
             const existing = await prisma.habit.findFirst({
                 where: { name: name, companyId }
             });
 
+            const habitData = {
+                topic,
+                cue: getValue(record, ['SEÑAL', 'CUE', 'SENAL']),
+                craving: getValue(record, ['ANHELO', 'CRAVING']),
+                response: getValue(record, ['RESPUESTA', 'RESPONSE', 'ACCION']),
+                reward: getValue(record, ['RECOMPENSA', 'REWARD']),
+                externalLink: getValue(record, ['LINK', 'ENLACE', 'URL', 'EXTERNAL_LINK']) || null,
+            };
+
             if (existing) {
-                // Update
                 await prisma.habit.update({
                     where: { id: existing.id },
                     data: {
-                        topic,
-                        cue: record['SEÑAL'] || record['Señal'] || record['cue'] || "",
-                        craving: record['ANHELO'] || record['Anhelo'] || record['craving'] || "",
-                        response: record['RESPUESTA'] || record['Respuesta'] || record['response'] || "",
-                        reward: record['RECOMPENSA'] || record['Recompensa'] || record['reward'] || "",
-                        externalLink: record['LINK'] || record['Link'] || record['externalLink'] || null,
-                        deletedAt: null // Restore if it was deleted
+                        ...habitData,
+                        deletedAt: null
                     }
                 });
             } else {
-                // Create
                 await prisma.habit.create({
                     data: {
                         name,
-                        topic,
-                        cue: record['SEÑAL'] || record['Señal'] || record['cue'] || "",
-                        craving: record['ANHELO'] || record['Anhelo'] || record['craving'] || "",
-                        response: record['RESPUESTA'] || record['Respuesta'] || record['response'] || "",
-                        reward: record['RECOMPENSA'] || record['Recompensa'] || record['reward'] || "",
-                        externalLink: record['LINK'] || record['Link'] || record['externalLink'] || null,
-                        companyId
+                        companyId,
+                        ...habitData
                     }
                 });
             }
