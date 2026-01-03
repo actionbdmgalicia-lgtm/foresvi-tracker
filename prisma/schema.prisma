@@ -1,0 +1,165 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --------------------------------------
+// ENUMS (Taxonomía y Estados)
+// --------------------------------------
+
+enum UserRole {
+  SUPER_ADMIN   // Dueño de la plataforma (Antigravity/Foresvi)
+  COMPANY_ADMIN // Admin de una empresa/grupo
+  USER          // Empleado/Usuario final
+}
+
+enum HabitTopic {
+  DESTINO
+  DINERO
+  GESTION_DEL_TIEMPO
+  SERVICIO
+  MARKETING_Y_VENTAS
+  SISTEMATIZACION
+  EQUIPO
+  SINERGIA
+  RESULTADOS
+}
+
+enum Frequency {
+  DIARIA
+  SEMANAL // Default
+  MENSUAL
+  TRIMESTRAL
+  ANUAL
+}
+
+enum BolaStatus {
+  NEGRA    // 0%
+  ROJA     // 33%
+  AMARILLA // 66%
+  VERDE    // 100%
+}
+
+// --------------------------------------
+// MODELS
+// --------------------------------------
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  logoUrl   String?
+  users     User[]
+  groups    Group[]
+  habits    Habit[]  // Hábitos propios de la empresa
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  name      String
+  password  String     // Hashed
+  role      UserRole   @default(USER)
+  
+  companyId String?
+  company   Company?   @relation(fields: [companyId], references: [id])
+  
+  groupId   String?
+  group     Group?     @relation(fields: [groupId], references: [id])
+  
+  assignments Assignment[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime? // Solicitado: Soft Delete para poder recuperar usuarios
+}
+
+model Group {
+  id        String   @id @default(uuid())
+  name      String
+  
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  
+  users     User[]
+  
+  createdAt DateTime @default(now())
+}
+
+model Habit {
+  id          String     @id @default(uuid())
+  topic       String     // Changed from Enum to String to allow custom dynamic topics
+  name        String
+  
+  // Estructura Atomic Habits (Las 4 Leyes)
+  cue         String // Señal
+  craving     String // Anhelo
+  response    String // Acción/Respuesta - Detalle específico
+  reward      String // Recompensa
+  
+  externalLink String?
+  
+  // Control de alcance: Global (null) vs Empresa
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id])
+  
+  assignments Assignment[]
+  
+  deletedAt   DateTime? // Solicitado: Habito borrado pero recuperable
+  createdAt   DateTime @default(now())
+}
+
+model Assignment {
+  id        String    @id @default(uuid())
+  
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  
+  habitId   String
+  habit     Habit     @relation(fields: [habitId], references: [id])
+  
+  frequency Frequency @default(SEMANAL)
+  isActive  Boolean   @default(true)
+  
+  progressLogs ProgressLog[]
+  
+  startDate DateTime @default(now())
+  
+  // Customizaciones por usuario (si son nulos, se usan los del Habit)
+  customName     String?
+  customCue      String?
+  customCraving  String?
+  customResponse String?
+  customReward   String?
+  customExternalLink String?
+
+  isConsolidated Boolean @default(false) // Hábito afianzado (cuenta como verde, se muestra colapsado)
+}
+
+model ProgressLog {
+  id           String     @id @default(uuid())
+  
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  
+  // Identificador del periodo evaluado
+  // Formatos sugeridos: 
+  // Semanal: "2024-W01", Diario: "2024-01-01", Mensual: "2024-01"
+  periodIdentifier String 
+  
+  status       BolaStatus
+  value        Float      // Valor numérico cacheado (0.0, 0.33, 0.66, 1.0) para optimizar cálculos
+  
+  notes        String?
+  
+  loggedAt     DateTime   @default(now())
+  
+  @@unique([assignmentId, periodIdentifier]) // Restricción: Un solo log por periodo para una asignación
+}

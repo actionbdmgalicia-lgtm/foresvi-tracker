@@ -5,3 +5,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+// Trigger restart Tue Dec 30 13:17:28 CET 2025
