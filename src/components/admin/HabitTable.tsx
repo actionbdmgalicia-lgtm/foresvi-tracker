@@ -124,10 +124,16 @@ export function HabitTable({ habits }: HabitTableProps) {
         if (window.confirm(`¿Importar hábitos desde "${file.name}"?`)) {
             try {
                 const { importHabitsFromCSV } = await import("@/app/actions/habit-actions");
-                await importHabitsFromCSV(formData);
-                alert("Importación completada.");
+                const result = await importHabitsFromCSV(formData);
+
+                if (result.success) {
+                    alert(`Importación completada.\n\n✅ Procesados: ${result.count}\n⚠️ Errores/Omitidos: ${result.errors}`);
+                } else {
+                    alert("Error al importar: " + result.error);
+                }
             } catch (err: any) {
-                alert("Error al importar: " + err.message);
+                console.error(err);
+                alert("Error crítico al importar: " + (err.message || "Error desconocido"));
             }
         }
         // Reset input

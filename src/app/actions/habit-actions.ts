@@ -74,88 +74,99 @@ export async function createHabit(formData: FormData) {
 import { parse } from 'csv-parse/sync';
 
 export async function importHabitsFromCSV(formData: FormData) {
-    const file = formData.get('csvFile') as File;
+    try {
+        const file = formData.get('csvFile') as File;
 
-    if (!file || file.size === 0) {
-        throw new Error("No se ha seleccionado ningún archivo.");
-    }
-
-    const text = await file.text();
-
-    const records = parse(text, {
-        columns: true,
-        skip_empty_lines: true,
-        trim: true,
-        bom: true,
-        delimiter: [',', ';', '\t'],
-        relax_quotes: true
-    }) as any[];
-
-    const companyId = "foresvi-hq";
-
-    let successCount = 0;
-    let errorCount = 0;
-
-    // Helper to find value case-insensitively
-    const getValue = (record: any, keys: string[]) => {
-        const recordKeys = Object.keys(record);
-        for (const key of keys) {
-            const foundKey = recordKeys.find(k => k.trim().toUpperCase() === key.toUpperCase());
-            if (foundKey && record[foundKey]) return record[foundKey];
-        }
-        return "";
-    };
-
-    for (const record of records) {
-        const name = getValue(record, ['HABITO', 'NAME', 'NOMBRE']);
-        const topic = getValue(record, ['TEMA', 'TOPIC']);
-
-        if (!name || !topic) {
-            errorCount++;
-            continue;
+        if (!file || file.size === 0) {
+            return { success: false, error: "No se ha seleccionado ningún archivo." };
         }
 
-        try {
-            const existing = await prisma.habit.findFirst({
-                where: { name: name, companyId }
-            });
+        const text = await file.text();
 
-            const habitData = {
-                topic,
-                cue: getValue(record, ['SEÑAL', 'CUE', 'SENAL']),
-                craving: getValue(record, ['ANHELO', 'CRAVING']),
-                response: getValue(record, ['RESPUESTA', 'RESPONSE', 'ACCION']),
-                reward: getValue(record, ['RECOMPENSA', 'REWARD']),
-                externalLink: getValue(record, ['LINK', 'ENLACE', 'URL', 'EXTERNAL_LINK']) || null,
-            };
+        // Check if text is empty or meaningless
+        if (!text || text.trim().length === 0) {
+            return { success: false, error: "El archivo está vacío." };
+        }
 
-            if (existing) {
-                await prisma.habit.update({
-                    where: { id: existing.id },
-                    data: {
-                        ...habitData,
-                        deletedAt: null
-                    }
-                });
-            } else {
-                await prisma.habit.create({
-                    data: {
-                        name,
-                        companyId,
-                        ...habitData
-                    }
-                });
+        const records = parse(text, {
+            columns: true,
+            skip_empty_lines: true,
+            trim: true,
+            bom: true,
+            delimiter: [',', ';', '\t'],
+            relax_quotes: true
+        }) as any[];
+
+        const companyId = "foresvi-hq";
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        // Helper to find value case-insensitively
+        const getValue = (record: any, keys: string[]) => {
+            const recordKeys = Object.keys(record);
+            for (const key of keys) {
+                const foundKey = recordKeys.find(k => k.trim().toUpperCase() === key.toUpperCase());
+                if (foundKey && record[foundKey]) return record[foundKey];
             }
-            successCount++;
-        } catch (e) {
-            console.error("Error importing habit:", name, e);
-            errorCount++;
-        }
-    }
+            return "";
+        };
 
-    revalidatePath("/admin/habits");
-    revalidatePath("/");
-    return { success: true, count: successCount, errors: errorCount };
+        for (const record of records) {
+            const name = getValue(record, ['HABITO', 'NAME', 'NOMBRE']);
+            const topic = getValue(record, ['TEMA', 'TOPIC']);
+
+            if (!name || !topic) {
+                errorCount++;
+                continue;
+            }
+
+            try {
+                const existing = await prisma.habit.findFirst({
+                    where: { name: name, companyId }
+                });
+
+                const habitData = {
+                    topic,
+                    cue: getValue(record, ['SEÑAL', 'CUE', 'SENAL']),
+                    craving: getValue(record, ['ANHELO', 'CRAVING']),
+                    response: getValue(record, ['RESPUESTA', 'RESPONSE', 'ACCION']),
+                    reward: getValue(record, ['RECOMPENSA', 'REWARD']),
+                    externalLink: getValue(record, ['LINK', 'ENLACE', 'URL', 'EXTERNAL_LINK']) || null,
+                };
+
+                if (existing) {
+                    await prisma.habit.update({
+                        where: { id: existing.id },
+                        data: {
+                            ...habitData,
+                            deletedAt: null
+                        }
+                    });
+                } else {
+                    await prisma.habit.create({
+                        data: {
+                            name,
+                            companyId,
+                            ...habitData
+                        }
+                    });
+                }
+                successCount++;
+            } catch (e) {
+                console.error("Error importing habit:", name, e);
+                errorCount++;
+            }
+        }
+
+        revalidatePath("/admin/habits");
+        revalidatePath("/");
+        return { success: true, count: successCount, errors: errorCount };
+
+    } catch (globalError: any) {
+        console.error("Global CSV Import Error:", globalError);
+        return { success: false, error: globalError.message || "Error desconocido al procesar el CSV" };
+    }
 }
 
 // NEW: Soft Delete Implementation
