@@ -57,24 +57,16 @@ export const HabitMatrix = ({ habits, logs, weeks, onEditHabit }: HabitMatrixPro
 
         let nextStatus: BolaStatus = "ROJA";
 
-        // Logic check: If current is NEGRA (empty), we might want to default to previous week's color or VERDE
+        // Logic: Green First Cycle (Optimized for success & solving loop issues)
+        // NEGRA -> VERDE -> AMARILLA -> ROJA -> NEGRA
         if (currentStatus === "NEGRA") {
-            if (habit.isConsolidated) {
-                nextStatus = "VERDE";
-            } else if (index > 0) {
-                // Try to grab previous week status
-                const prevWeekLabel = weeks[index - 1];
-                const prevKey = `${assignmentId}-${prevWeekLabel}`;
-                const prevStatus = optimisticLogs[prevKey];
-                if (prevStatus && prevStatus !== "NEGRA") {
-                    nextStatus = prevStatus;
-                }
-            }
-        } else {
-            // Standard rotation
-            if (currentStatus === "ROJA") nextStatus = "AMARILLA";
-            else if (currentStatus === "AMARILLA") nextStatus = "VERDE";
-            else if (currentStatus === "VERDE") nextStatus = "NEGRA";
+            nextStatus = "VERDE";
+        } else if (currentStatus === "VERDE") {
+            nextStatus = "AMARILLA";
+        } else if (currentStatus === "AMARILLA") {
+            nextStatus = "ROJA";
+        } else if (currentStatus === "ROJA") {
+            nextStatus = "NEGRA";
         }
 
         startTransition(() => {
