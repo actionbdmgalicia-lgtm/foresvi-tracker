@@ -88,27 +88,50 @@ export async function importHabitsFromCSV(formData: FormData) {
             return { success: false, error: "El archivo está vacío." };
         }
 
-        // Manual Delimiter Sniffing
-        // This fixes the "columns length is 1" error when auto-detection fails
-        const firstLine = text.split('\n')[0];
-        const commaCount = (firstLine.match(/,/g) || []).length;
-        const semiCount = (firstLine.match(/;/g) || []).length;
-        const tabCount = (firstLine.match(/\t/g) || []).length;
+        // SMART PARSING: Scan first 10 lines to find headers and delimiter
+        const lines = text.split(/\r\n|\n|\r/);
+        const searchDepth = Math.min(lines.length, 10);
 
-        let detectedDelimiter = ',';
-        if (semiCount > commaCount && semiCount > tabCount) detectedDelimiter = ';';
-        else if (tabCount > commaCount && tabCount > semiCount) detectedDelimiter = '\t';
+        let bestDelimiter = ',';
+        let maxDelimiterCount = 0;
+        let headerLineIndex = 0;
 
-        console.log(`Detected delimiter: '${detectedDelimiter}' (Comma: ${commaCount}, Semi: ${semiCount}, Tab: ${tabCount})`);
+        const delimiters = [',', ';', '\t'];
+
+        for (let i = 0; i < searchDepth; i++) {
+            const line = lines[i];
+            if (!line) continue;
+
+            for (const delim of delimiters) {
+                // Count occurrences of this delimiter in this line
+                const count = line.split(delim).length - 1;
+                // Heuristic: Headers usually have at least 2 columns
+                if (count > maxDelimiterCount && count >= 2) {
+                    maxDelimiterCount = count;
+                    bestDelimiter = delim;
+                    headerLineIndex = i;
+                }
+            }
+        }
+
+        console.log(`Smart Import: Delimiter '${bestDelimiter}' found at line ${headerLineIndex + 1} with ${maxDelimiterCount} cols.`);
+
+        // If no delimiter found, fallback to default (probably comma, or file is just one column)
+        if (maxDelimiterCount === 0) {
+            const firstLine = lines[0] || "";
+            if (firstLine.includes(";")) bestDelimiter = ";";
+            else if (firstLine.includes("\t")) bestDelimiter = "\t";
+        }
 
         const records = parse(text, {
             columns: true,
             skip_empty_lines: true,
             trim: true,
             bom: true,
-            delimiter: detectedDelimiter,
+            delimiter: bestDelimiter,
+            from_line: headerLineIndex + 1, // csv-parse is 1-based
             relax_quotes: true,
-            relax_column_count: true // Prevent crash if a row has extra/fewer fields
+            relax_column_count: true
         }) as any[];
 
         const companyId = "foresvi-hq";
@@ -175,7 +198,15 @@ export async function importHabitsFromCSV(formData: FormData) {
 
         revalidatePath("/admin/habits");
         revalidatePath("/");
-        return { success: true, count: successCount, errors: errorCount };
+
+        // Return debug info if everything failed
+        const firstRecordKeys = records.length > 0 ? Object.keys(records[0]).join(", ") : "None";
+        return {
+            success: true,
+            count: successCount,
+            errors: errorCount,
+            debugInfo: successCount === 0 ? `Cabeceras detectadas: [${firstRecordKeys}]` : undefined
+        };
 
     } catch (globalError: any) {
         console.error("Global CSV Import Error:", globalError);

@@ -127,7 +127,11 @@ export function HabitTable({ habits }: HabitTableProps) {
                 const result = await importHabitsFromCSV(formData);
 
                 if (result.success) {
-                    alert(`Importación completada.\n\n✅ Procesados: ${result.count}\n⚠️ Errores/Omitidos: ${result.errors}`);
+                    let msg = `Importación completada.\n\n✅ Procesados: ${result.count}\n⚠️ Errores/Omitidos: ${result.errors}`;
+                    if (result.debugInfo) {
+                        msg += `\n\n🔍 Debug Info: ${result.debugInfo}\n(Revisa que las cabeceras coincidan con: HABITO, TEMA, SEÑAL...)`;
+                    }
+                    alert(msg);
                 } else {
                     alert("Error al importar: " + result.error);
                 }
