@@ -38,12 +38,7 @@ export default async function AdminHabitsPage() {
                 </div>
 
                 <div className="flex gap-3">
-                    {/* CSV Import Button Trigger - implemented in client component usually or separate page */}
-                    <form action={importHabitsFromCSV}>
-                        <button type="submit" className="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-700 transition-colors flex items-center gap-2">
-                            <Upload className="w-4 h-4" /> Importar CSV
-                        </button>
-                    </form>
+                    {/* Import Controls are now inside HabitTable */}
                 </div>
             </div>
 
