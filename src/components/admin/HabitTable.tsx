@@ -262,7 +262,7 @@ export function HabitTable({ habits }: HabitTableProps) {
                                             </div>
                                         </td>
                                     </tr>
-                                    {isExpanded && topicHabits.map(habit => {
+                                    {isExpanded && topicHabits.map((habit: any) => {
                                         const isEditing = editingId === habit.id;
 
                                         if (isEditing) {
