@@ -113,8 +113,8 @@ model Habit {
   company     Company? @relation(fields: [companyId], references: [id])
   
   // New Fields for Private Habits
-  isGlobal    Boolean  @default(true) // Visible in global grid vs Private to a user
-  creatorId   String?  // Id of user who created this if it's private
+  isGlobal    Boolean  @default(true)
+  creatorId   String?
   creator     User?    @relation("CreatedHabits", fields: [creatorId], references: [id])
   
   assignments Assignment[]
