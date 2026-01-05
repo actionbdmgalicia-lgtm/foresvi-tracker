@@ -1,7 +1,7 @@
 import { Bola } from "../ui/Bola";
 import { cn } from "@/lib/utils";
 import { Info, Edit2 } from "lucide-react";
-import { useState, useOptimistic, startTransition } from "react";
+import { useState, useOptimistic, startTransition, useRef, useEffect } from "react";
 import { toggleProgressLog, BolaStatus } from "@/app/actions/dashboard-actions";
 
 // Types - Use shared type or redefine
@@ -48,6 +48,15 @@ export const HabitMatrix = ({ habits, logs, weeks, onEditHabit }: HabitMatrixPro
             [newLog.key]: newLog.status
         })
     );
+
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll to latest week on mount for mobile ux
+    useEffect(() => {
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+        }
+    }, []);
 
     const toggleStatus = async (habit: any, week: string, index: number) => {
         const periodIdentifier = week;
@@ -102,7 +111,7 @@ export const HabitMatrix = ({ habits, logs, weeks, onEditHabit }: HabitMatrixPro
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-            <div className="overflow-x-auto pb-4 custom-scrollbar">
+            <div ref={scrollContainerRef} className="overflow-x-auto pb-4 custom-scrollbar">
                 <table className="w-full text-sm text-left border-collapse">
                     <thead>
                         <tr className="bg-gray-50 border-b border-gray-200">

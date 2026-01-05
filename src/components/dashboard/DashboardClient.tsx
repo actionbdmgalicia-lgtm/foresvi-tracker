@@ -6,6 +6,7 @@ import { EditHabitModal } from "@/components/dashboard/EditHabitModal";
 import { useState } from "react";
 import clsx from "clsx";
 import Image from "next/image";
+import { Settings, LogOut } from "lucide-react";
 
 // Dashboard props
 interface DashboardProps {
@@ -237,18 +238,20 @@ export default function DashboardClient({ user, habits, logs, isImpersonating }:
                   const { stopImpersonating } = await import('@/app/actions/impersonate-action');
                   await stopImpersonating();
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 hover:bg-amber-200 rounded-full text-xs font-bold uppercase tracking-wider transition-colors border border-amber-300 shadow-sm animate-pulse"
+                className="flex items-center gap-2 px-3 md:px-4 py-2 bg-amber-100 text-amber-800 hover:bg-amber-200 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider transition-colors border border-amber-300 shadow-sm animate-pulse whitespace-nowrap"
               >
                 <span className="w-2 h-2 rounded-full bg-amber-600"></span>
-                Volver a Admin
+                <span className="md:hidden">Salir Modo Ver</span>
+                <span className="hidden md:inline">Volver a Admin</span>
               </button>
             ) : (
-              <Link href="/admin" className="text-xs font-bold text-gray-500 hover:text-brand-primary uppercase tracking-wider hidden md:block">
-                Admin Panel
+              <Link href="/admin" className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-brand-primary uppercase tracking-wider" title="Panel de Administrador">
+                <Settings className="w-5 h-5" />
+                <span className="hidden md:inline">Admin</span>
               </Link>
             )}
 
-            <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border-2 border-brand-primary shadow-sm">
+            <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border-2 border-brand-primary shadow-sm hidden sm:block">
               <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=003349&color=fff`} alt="Profile" />
             </div>
             <a
@@ -256,16 +259,19 @@ export default function DashboardClient({ user, habits, logs, isImpersonating }:
               className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-md uppercase tracking-wider shadow-sm transition-colors flex items-center gap-2"
               title="Descargar Informe Excel"
             >
-              Informe
+              <span className="hidden md:inline">Informe</span>
+              <span className="md:hidden">XLS</span>
             </a>
             <button
               onClick={async () => {
                 const { logout } = await import('@/app/actions/auth-actions');
                 await logout();
               }}
-              className="text-xs font-bold text-red-500 hover:text-red-700 uppercase tracking-wider ml-2"
+              className="text-xs font-bold text-red-500 hover:text-red-700 uppercase tracking-wider ml-2 flex items-center gap-1"
+              title="Cerrar Sesión"
             >
-              Salir
+              <span className="hidden md:inline">Salir</span>
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
