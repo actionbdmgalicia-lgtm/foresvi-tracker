@@ -21,19 +21,73 @@ export default async function DashboardPage() {
 
     if (!user) redirect("/api/auth/cleanup");
 
-    // TEMPORARY DEBUG: Skip complex queries to isolate crash
-    return (
-      <div className="p-8">
-        <h1 className="font-bold text-2xl">Bienvenido {user.name}</h1>
-        <p>El sistema se está actualizando. Si ves esto, tu usuario funciona correctamente.</p>
-        <p>Restaurando panel...</p>
-      </div>
-    );
+    // 2. Fetch Assigned Habits
+    // Only Active assignments
+    const assignments = await prisma.assignment.findMany({
+      where: {
+        userId: user.id,
+        isActive: true
+      },
+      include: {
+        habit: true
+      }
+    });
 
-    /* 
-    // OLD CODE COMMENTED OUT
-    // ... (rest of the logic)
-    */
+    // Define the explicit topic order based on user request
+    const TOPIC_ORDER: Record<string, number> = {
+      'DESTINO': 1,
+      'DINERO': 2,
+      'GESTION_DEL_TIEMPO': 3,
+      'SERVICIO': 4,
+      'MARKETING_Y_VENTAS': 5,
+      'SISTEMATIZACION': 6,
+      'EQUIPO': 7,
+      'SINERGIA': 8,
+      'RESULTADOS': 9
+    };
+
+    // Map to the shape expected by Dashboard (Habit + Customizations)
+    const habits = assignments.map(a => {
+      if (!a.habit) return null; // Safety check
+      return {
+        ...a.habit,
+        name: a.customName || a.habit.name,
+        cue: a.customCue || a.habit.cue,
+        craving: a.customCraving || a.habit.craving,
+        response: a.customResponse || a.habit.response,
+        reward: a.customReward || a.habit.reward,
+        externalLink: a.customExternalLink || a.habit.externalLink,
+        isConsolidated: a.isConsolidated,
+        assignmentId: a.id // track assignment ID for logging
+      };
+    })
+      .filter((h): h is NonNullable<typeof h> => h !== null)
+      .sort((a, b) => {
+        const orderA = TOPIC_ORDER[a.topic] || 99;
+        const orderB = TOPIC_ORDER[b.topic] || 99;
+        return orderA - orderB;
+      });
+
+    const activeAssignmentIds = assignments.map(a => a.id);
+    const logs = await prisma.progressLog.findMany({
+      where: {
+        assignmentId: { in: activeAssignmentIds }
+      }
+    });
+
+    // Check for impersonation cookie
+    const cookieStore = await cookies();
+    const isImpersonating = cookieStore.has("foresvi_impersonator_id");
+
+    // 3. Render Client Component
+    return (
+      <DashboardClient
+        user={user}
+        habits={habits}
+        logs={logs}
+        isImpersonating={isImpersonating}
+      />
+    );
   } catch (error: any) {
     if (error.message === 'NEXT_REDIRECT') throw error;
     if (error.digest?.startsWith('NEXT_REDIRECT')) throw error;
