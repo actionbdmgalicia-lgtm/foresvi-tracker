@@ -19,7 +19,15 @@ export default async function DashboardPage() {
       include: { group: true }
     });
 
-    if (!user) redirect("/api/auth/cleanup");
+    if (!user) return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <h1 className="text-xl font-bold text-red-600 mb-2">Error de Sesión (Usuario no encontrado)</h1>
+        <p className="text-gray-600 mb-6">Tu sesión parece válida pero el usuario no existe en la base de datos.</p>
+        <a href="/api/auth/cleanup" className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded shadow transition-colors">
+          Resetear y Salir
+        </a>
+      </div>
+    );
 
     // 2. Fetch Assigned Habits
     // Only Active assignments
