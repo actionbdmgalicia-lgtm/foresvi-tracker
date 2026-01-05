@@ -9,9 +9,21 @@ export const dynamic = 'force-dynamic';
 export default async function DashboardPage() {
   try {
     const userId = await getSessionUserId();
+    console.log("Dashboard - Session User ID:", userId);
 
     if (!userId) {
-      redirect("/login");
+      // Stop the loop: Manual Link
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+          <div className="bg-white p-8 rounded-lg shadow text-center max-w-md">
+            <h1 className="text-xl font-bold text-gray-800 mb-2">Sesión no iniciada</h1>
+            <p className="text-gray-500 mb-6 text-sm">No se ha detectado ninguna cookie de sesión válida.</p>
+            <a href="/login" className="bg-brand-primary text-white font-bold py-2 px-6 rounded hover:bg-blue-900 transition-colors">
+              Ir a Iniciar Sesión
+            </a>
+          </div>
+        </div>
+      );
     }
 
     const user = await prisma.user.findUnique({
