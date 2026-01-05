@@ -332,7 +332,7 @@ export function HabitTable({ habits }: HabitTableProps) {
 
                         {topics.map(topic => {
                             const isExpanded = expandedTopics[topic] ?? true;
-                            const topicHabits = habitsByTopic[topic].sort((a, b) => a.name.localeCompare(b.name));
+                            const topicHabits = habitsByTopic[topic].sort((a: any, b: any) => a.name.localeCompare(b.name));
 
                             return (
                                 <div key={topic} className="contents">

@@ -24,11 +24,13 @@ export function CreatePrivateHabitButton({ userId }: Props) {
         }
     }
 
+    console.log("CreatePrivateHabitButton mounted for user:", userId);
+
     if (!isOpen) {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors"
+                className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors"
                 title="Crear un hábito específico solo para este usuario"
             >
                 <Lock className="w-4 h-4" /> Personalizar
