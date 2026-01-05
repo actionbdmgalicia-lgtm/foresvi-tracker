@@ -7,6 +7,7 @@ import { UserHabitCard } from "@/components/admin/UserHabitCard";
 import { InviteLink } from "@/components/admin/InviteLink";
 import { GroupSelector } from "@/components/admin/GroupSelector";
 import { ImpersonateButton } from "@/components/admin/ImpersonateButton";
+import { CreatePrivateHabitButton } from "@/components/admin/CreatePrivateHabitButton";
 
 interface Props {
     params: Promise<{
@@ -30,10 +31,13 @@ export default async function AssignmentPage({ params }: Props) {
         where: { companyId: user.companyId || "foresvi-hq" }
     });
 
-    // Get all habits available for the company (or global)
+    // Get all habits available for the company (global + user private)
     const allHabits = await prisma.habit.findMany({
         where: {
-            companyId: user.companyId // Only exact match for now
+            OR: [
+                { companyId: user.companyId, isGlobal: true },
+                { companyId: user.companyId, creatorId: userId }
+            ]
         },
         orderBy: { topic: 'asc' }
     });
@@ -77,6 +81,7 @@ export default async function AssignmentPage({ params }: Props) {
                                 {userAssignments.length} Hábitos Activos
                             </span>
                             <ImpersonateButton userId={userId} />
+                            <CreatePrivateHabitButton userId={userId} />
                         </div>
                     </div>
                 </div>

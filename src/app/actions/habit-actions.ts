@@ -255,3 +255,50 @@ export async function getHabitAssignments(habitId: string) {
     });
     return assignments.map(a => a.user);
 }
+
+export async function createPrivateHabit(userId: string, formData: FormData) {
+    const name = formData.get("name") as string;
+    const topic = formData.get("topic") as string;
+
+    if (!name || !topic) throw new Error("Nombre y Tema requeridos");
+
+    const habit = await prisma.habit.create({
+        data: {
+            name,
+            topic,
+            cue: (formData.get("cue") as string) || "",
+            craving: (formData.get("craving") as string) || "",
+            response: (formData.get("response") as string) || "",
+            reward: (formData.get("reward") as string) || "",
+            externalLink: (formData.get("externalLink") as string) || null,
+            companyId: "foresvi-hq",
+            isGlobal: false,
+            creatorId: userId
+        }
+    });
+
+    await prisma.assignment.create({
+        data: {
+            userId,
+            habitId: habit.id,
+            isActive: true
+        }
+    });
+
+    revalidatePath(`/admin/users/${userId}`);
+}
+
+export async function promoteHabitToGlobal(habitId: string) {
+    if (!habitId) return;
+
+    await prisma.habit.update({
+        where: { id: habitId },
+        data: {
+            isGlobal: true,
+            creatorId: null // Make it shared
+        }
+    });
+
+    revalidatePath("/admin/habits");
+    revalidatePath("/admin/users");
+}
