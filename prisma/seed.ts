@@ -92,7 +92,7 @@ async function main() {
     });
 
     // 4. Leer CSV
-    const csvFilePath = path.join(__dirname, 'plantilla_habitos.csv');
+    const csvFilePath = path.join(process.cwd(), 'prisma', 'plantilla_habitos.csv');
     const fileContent = fs.readFileSync(csvFilePath, { encoding: 'utf-8' });
 
     const records = parse(fileContent, {
