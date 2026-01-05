@@ -36,9 +36,9 @@ export async function createUser(formData: FormData) {
 
     if (!name || !email) return;
 
-    // Beta: Default password for all new users is "foresvi2025"
+    // Beta: Default password for all new users is "foresvi2026"
     // TODO: In production, generate random token or require password set via email
-    const hashedPassword = await bcrypt.hash("foresvi2025", 10);
+    const hashedPassword = await bcrypt.hash("foresvi2026", 10);
 
     await prisma.user.create({
         data: {
