@@ -122,7 +122,7 @@ export default async function AssignmentPage({ params }: Props) {
                             {habits.sort((a, b) => {
                                 const aAssigned = !!assignmentsMap[a.id];
                                 const bAssigned = !!assignmentsMap[b.id];
-                                return (aAssigned === bAssigned) ? 0 : aAssigned ? -1 : 1;
+                                return (aAssigned === bAssigned) ? a.name.localeCompare(b.name) : aAssigned ? -1 : 1;
                             }).map(habit => {
                                 const assignment = assignmentsMap[habit.id];
                                 const isAssigned = !!assignment;
