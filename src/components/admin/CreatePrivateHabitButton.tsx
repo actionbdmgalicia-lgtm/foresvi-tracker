@@ -25,6 +25,7 @@ export function CreatePrivateHabitButton({ userId }: Props) {
     }
 
     console.log("CreatePrivateHabitButton mounted for user:", userId);
+    console.log("Button mounted");
 
     if (!isOpen) {
         return (
