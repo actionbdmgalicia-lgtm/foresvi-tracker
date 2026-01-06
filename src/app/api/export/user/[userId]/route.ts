@@ -106,29 +106,35 @@ export async function GET(
     // --- SHEET 3: EVOLUCIÓN VISUAL (MATRIZ WEB) ---
     const sheetEvolution = workbook.addWorksheet("Evolución Visual");
 
-    // 1. Determine Periods Sorted Chronologically (Oldest -> Newest)
-    // We infer order by the earliest 'loggedAt' timestamp associated with each period label
-    const periodMiniMap = new Map<string, number>();
-    logs.forEach(l => {
-        const existing = periodMiniMap.get(l.periodIdentifier);
-        const currentTs = new Date(l.loggedAt).getTime();
-        // We want the min date for this period to sort correctly
-        if (existing === undefined || currentTs < existing) {
-            periodMiniMap.set(l.periodIdentifier, currentTs);
-        }
-    });
+    // Helper: Week Number (ISO-8601-ish as per Dashboard)
+    function getWeekNumber(d: Date) {
+        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+        return weekNo;
+    }
 
-    // Sort periods ascending (Oldest first, matching Web Left-to-Right)
-    const sortedPeriods = Array.from(periodMiniMap.keys()).sort((a, b) => {
-        return (periodMiniMap.get(a) || 0) - (periodMiniMap.get(b) || 0);
-    });
+    // 1. Generate Last 20 Weeks (Chronological, Oldest -> Newest)
+    // This solves "Reverse Order" (by strictly generating Past -> Future)
+    // And "Missing Weeks" (by including empty weeks in the range)
+    const sortedPeriods: string[] = [];
+    const currentDate = new Date(); // Anchor: Today
+
+    // Iterate from 19 weeks ago up to today (0)
+    for (let i = 19; i >= 0; i--) {
+        const d = new Date(currentDate);
+        d.setDate(d.getDate() - (i * 7));
+        const w = getWeekNumber(d);
+        sortedPeriods.push(w.toString());
+    }
 
     // 2. Define Columns
     // First col is Habit Name, rest are Periods
     const periodColumns = sortedPeriods.map(p => ({
-        header: p,
+        header: `SEM ${p}`,
         key: p,
-        width: 6,
+        width: 8,
         style: { alignment: { horizontal: 'center' as const } }
     }));
 
@@ -158,11 +164,7 @@ export async function GET(
             let status = logLookup.get(`${a.id}-${p}`);
 
             // Logic for Consolidated: If no log (undefined/NEGRA) + Consolidated => VERDE
-            if (!status && a.isConsolidated) {
-                status = "VERDE";
-            }
             // If explicit status is NEGRA, it stays NEGRA unless consolidated logic above handles the 'missing' case.
-            // Wait, if status IS 'NEGRA' (explicit log), and Consolidated, logic says treating it as VERDE in dashboard calculation.
             // Let's match Dashboard logic:
             // if (status === "NEGRA" && habit.isConsolidated) status = "VERDE";
 
