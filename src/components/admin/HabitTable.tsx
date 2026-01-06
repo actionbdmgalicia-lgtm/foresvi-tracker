@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Edit2, ExternalLink, Save, Plus, Trash2, X, Upload } from "lucide-react";
+import { Edit2, ExternalLink, Save, Plus, Trash2, X, Upload, Users } from "lucide-react";
 import { updateHabit, createHabit } from "@/app/actions/habit-actions";
 
 interface HabitTableProps {
@@ -234,6 +234,7 @@ export function HabitTable({ habits }: HabitTableProps) {
                             <th className="px-4 py-3 min-w-[150px]">Anhelo</th>
                             <th className="px-4 py-3 min-w-[150px]">Acción</th>
                             <th className="px-4 py-3 min-w-[150px]">Recompensa</th>
+                            <th className="px-4 py-3 w-[80px] text-center" title="Usuarios asignados">Usuarios</th>
                             <th className="px-4 py-3 w-[80px]">Enlace</th>
                             <th className="px-4 py-3 w-[80px] text-right">Acciones</th>
                         </tr>
@@ -241,53 +242,7 @@ export function HabitTable({ habits }: HabitTableProps) {
                     <tbody className="divide-y divide-gray-100">
                         {isCreating && !showArchived && (
                             <tr className="bg-green-50/50 animate-in fade-in">
-                                <td colSpan={7} className="p-0">
-                                    <form action={async (formData) => {
-                                        await createHabit(formData);
-                                        setIsCreating(false);
-                                    }} className="contents">
-                                        <div className="flex w-full">
-                                            {/* We need to mimic the table cells layout inside the form or wrap each input in td. 
-                                                Since we can't easily nest form in TR unless we use 'display: contents' trick or form per input. 
-                                                The cleanest way in NextJS server actions without JS-heavy form handlers is 
-                                                placing <form> around the TR or inside content-cell.
-                                                However, standard HTML forbid form inside TR. 
-                                                But React allows it if we treat it carefully or use Form comp.
-                                                Here we use the 'contents' class (display:contents) on form.
-                                            */}
-                                            {/* Re-implementing the structure row strictly */}
-                                        </div>
-                                        {/* Actually the previous logic was: form as container with display contents, and direct TDs inside. */}
-                                    </form>
-                                    {/* Let's try to match the previous working implementation exactly */}
-                                    {/* Since I am rewriting, I will put the form properly */}
-                                </td>
-                            </tr>
-                        )}
-                        {/* CORRECT FORM ROW IMPLEMENTATION FOR CREATE */}
-                        {isCreating && !showArchived && (
-                            <tr className="bg-green-50/50 animate-in fade-in">
-                                <td colSpan={7} className="p-0 border-0">
-                                    <form action={async (formData) => {
-                                        await createHabit(formData);
-                                        setIsCreating(false);
-                                    }} className="w-full flex">
-                                        {/* This flex hack might break table alignment. 
-                                           Better: Put form outside or use 'form' attribute on inputs? 
-                                           No, use the 'contents' display style on form. 
-                                       */}
-                                    </form>
-                                    {/* 
-                                        Wait, simpler: Inputs have form attribute? No. 
-                                        Let's stick to the structure that worked:
-                                        <tr ...>
-                                           <form ... className="contents">
-                                              <td>...</td>
-                                              <td>...</td>
-                                           </form>
-                                        </tr>
-                                        This is valid JSX and works in browsers usually with display: contents
-                                    */}
+                                <td colSpan={8} className="p-0 border-0">
                                     <div style={{ display: 'contents' }} className="contents-wrapper">
                                         <form action={async (formData) => {
                                             await createHabit(formData);
@@ -310,6 +265,9 @@ export function HabitTable({ habits }: HabitTableProps) {
                                             </td>
                                             <td className="px-4 py-3 align-top">
                                                 <textarea name="reward" className="w-full text-xs border border-green-300 rounded px-2 py-1 outline-none min-h-[40px]" placeholder="Recompensa..." />
+                                            </td>
+                                            <td className="px-4 py-3 align-top text-center text-gray-300">
+                                                -
                                             </td>
                                             <td className="px-4 py-3 align-top">
                                                 <input type="text" name="externalLink" className="w-full text-xs border border-green-300 rounded px-2 py-1 outline-none text-blue-600" placeholder="URL" />
@@ -340,7 +298,7 @@ export function HabitTable({ habits }: HabitTableProps) {
                                         className="bg-gray-100 hover:bg-gray-200 cursor-pointer transition-colors"
                                         onClick={() => toggleTopic(topic)}
                                     >
-                                        <td colSpan={7} className="px-4 py-2">
+                                        <td colSpan={8} className="px-4 py-2">
                                             <div className="flex items-center gap-2">
                                                 <span className="transform transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
                                                 <span className="font-bold text-brand-primary uppercase text-xs">{topic.replace(/_/g, " ")}</span>
@@ -354,7 +312,7 @@ export function HabitTable({ habits }: HabitTableProps) {
                                         if (isEditing) {
                                             return (
                                                 <tr key={habit.id} className="bg-blue-50/50">
-                                                    <td colSpan={7} className="p-0 border-0">
+                                                    <td colSpan={8} className="p-0 border-0">
                                                         <div style={{ display: 'contents' }}>
                                                             <form action={async (formData) => {
                                                                 await updateHabit(formData);
@@ -377,6 +335,9 @@ export function HabitTable({ habits }: HabitTableProps) {
                                                                 </td>
                                                                 <td className="px-4 py-3 align-top">
                                                                     <textarea name="reward" defaultValue={habit.reward} className="w-full text-xs border border-blue-300 rounded px-2 py-1 outline-none min-h-[40px]" placeholder="Recompensa..." />
+                                                                </td>
+                                                                <td className="px-4 py-3 align-top text-center text-gray-300">
+                                                                    -
                                                                 </td>
                                                                 <td className="px-4 py-3 align-top">
                                                                     <input type="text" name="externalLink" defaultValue={habit.externalLink || ''} className="w-full text-xs border border-blue-300 rounded px-2 py-1 outline-none text-blue-600" placeholder="URL" />
@@ -416,6 +377,12 @@ export function HabitTable({ habits }: HabitTableProps) {
                                                 </td>
                                                 <td className="px-4 py-3 align-top">
                                                     <p className="text-xs text-green-700 font-medium">{habit.reward}</p>
+                                                </td>
+                                                <td className="px-4 py-3 align-top text-center">
+                                                    <div className="flex items-center justify-center gap-1 bg-blue-50 text-brand-primary px-2 py-1 rounded-full text-xs font-bold w-fit mx-auto" title="Usuarios activos con este hábito">
+                                                        <Users className="w-3 h-3" />
+                                                        {habit._count?.assignments || 0}
+                                                    </div>
                                                 </td>
                                                 <td className="px-4 py-3 align-top">
                                                     {habit.externalLink ? (

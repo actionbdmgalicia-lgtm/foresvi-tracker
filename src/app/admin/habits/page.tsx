@@ -8,6 +8,11 @@ export const dynamic = 'force-dynamic';
 export default async function AdminHabitsPage() {
     // Fetch all habits
     const habits = await prisma.habit.findMany({
+        include: {
+            _count: {
+                select: { assignments: true }
+            }
+        },
         orderBy: { topic: 'asc' }
     });
 
