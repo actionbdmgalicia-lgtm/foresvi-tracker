@@ -6,21 +6,10 @@ import { Plus, X, Save, Lock } from "lucide-react";
 
 interface Props {
     userId: string;
+    availableTopics: string[];
 }
 
-const TOPICS = [
-    "DESTINO",
-    "DINERO",
-    "GESTION_DEL_TIEMPO",
-    "SERVICIO",
-    "MARKETING_Y_VENTAS",
-    "SISTEMATIZACION",
-    "EQUIPO",
-    "SINERGIA",
-    "RESULTADOS"
-];
-
-export function CreatePrivateHabitButton({ userId }: Props) {
+export function CreatePrivateHabitButton({ userId, availableTopics }: Props) {
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -70,7 +59,7 @@ export function CreatePrivateHabitButton({ userId }: Props) {
                             <label className="text-xs font-bold text-gray-700 uppercase">Tema</label>
                             <select name="topic" className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 uppercase bg-white" required defaultValue="">
                                 <option value="" disabled>SELECCIONA TEMA</option>
-                                {TOPICS.map(t => (
+                                {availableTopics.map(t => (
                                     <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
                                 ))}
                             </select>

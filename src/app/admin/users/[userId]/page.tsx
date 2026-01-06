@@ -48,6 +48,15 @@ export default async function AssignmentPage({ params }: Props) {
         where: { userId, isActive: true }
     });
 
+    // Fetch unique topics for the dropdown
+    const distinctTopics = await prisma.habit.findMany({
+        where: { deletedAt: null },
+        select: { topic: true },
+        distinct: ['topic'],
+        orderBy: { topic: 'asc' }
+    });
+    const availableTopics = distinctTopics.map(t => t.topic);
+
     // Create a map for fast lookup of assignment by habitId
     // We map the whole assignment object to access custom fields
     const assignmentsMap = userAssignments.reduce((acc, curr) => {
@@ -82,7 +91,7 @@ export default async function AssignmentPage({ params }: Props) {
                                 {userAssignments.length} Hábitos Activos
                             </span>
                             <ImpersonateButton userId={userId} />
-                            <CreatePrivateHabitButton userId={userId} />
+                            <CreatePrivateHabitButton userId={userId} availableTopics={availableTopics} />
                         </div>
                     </div>
                 </div>
