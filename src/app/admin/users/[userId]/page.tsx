@@ -34,6 +34,7 @@ export default async function AssignmentPage({ params }: Props) {
     // Get all habits available for the company (global + user private)
     const allHabits = await prisma.habit.findMany({
         where: {
+            deletedAt: null,
             OR: [
                 { companyId: user.companyId, isGlobal: true },
                 { companyId: user.companyId, creatorId: userId }
