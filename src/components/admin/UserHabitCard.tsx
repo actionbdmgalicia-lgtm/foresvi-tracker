@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Edit2, Check, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Edit2, Check, X, ChevronDown, ChevronUp, Lock, Globe } from "lucide-react";
 import clsx from "clsx";
 import { toggleHabitAssignment, updateAssignmentCustomization } from "@/app/actions/assignment-actions";
+import { promoteHabitToGlobal } from "@/app/actions/habit-actions";
 
 interface UserHabitCardProps {
     habit: any;
@@ -28,11 +29,19 @@ export function UserHabitCard({ habit, assignment, userId, isAssigned }: UserHab
     return (
         <div className={clsx(
             "rounded-xl border border-gray-200 overflow-hidden shadow-sm transition-colors",
-            isAssigned ? "bg-green-50/20" : "bg-white"
+            isAssigned ? "bg-green-50/20" : "bg-white",
+            !habit.isGlobal && "bg-pink-50/30 border-pink-100" // Highlight private habits slightly
         )}>
             <div className="p-4 flex items-start justify-between">
                 <div className="flex-1">
-                    <p className="font-medium text-gray-900">{habit.name}</p>
+                    <div className="flex items-center gap-2">
+                        <p className="font-medium text-gray-900">{habit.name}</p>
+                        {!habit.isGlobal && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-100 text-pink-700 border border-pink-200 shadow-sm" title="Este hábito es visible SOLO para este usuario">
+                                <Lock className="w-3 h-3" /> Privado
+                            </span>
+                        )}
+                    </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
                         <p className="text-xs text-gray-500"><strong className="text-brand-secondary">Señal:</strong> {cue}</p>
                         <p className="text-xs text-gray-500"><strong className="text-green-600">Recompensa:</strong> {reward}</p>
@@ -40,6 +49,23 @@ export function UserHabitCard({ habit, assignment, userId, isAssigned }: UserHab
                 </div>
 
                 <div className="flex items-center gap-2 ml-4">
+                    {/* Generalize Button - Only for Private Habits */}
+                    {!habit.isGlobal && (
+                        <form action={async () => {
+                            if (confirm("¿Estás seguro de que quieres hacer este hábito GLOBAL? Se hará visible para toda la empresa en el Admin Panel.")) {
+                                await promoteHabitToGlobal(habit.id);
+                            }
+                        }}>
+                            <button
+                                type="submit"
+                                className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors"
+                                title="Promocionar a Global (Hacer disponible para todos)"
+                            >
+                                <Globe className="w-4 h-4" />
+                            </button>
+                        </form>
+                    )}
+
                     {/* Expand/Edit Button - Only if Assigned */}
                     {isAssigned && (
                         <button
