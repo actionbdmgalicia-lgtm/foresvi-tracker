@@ -2,11 +2,12 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { parse } from 'csv-parse/sync';
 
 export async function updateHabit(formData: FormData) {
     const id = formData.get("id") as string;
     const name = formData.get("name") as string;
-    const topic = formData.get("topic") as any; // Allow any for now, better to validate Enum
+    const topic = formData.get("topic") as any;
     const cue = formData.get("cue") as string;
     const craving = formData.get("craving") as string;
     const response = formData.get("response") as string;
@@ -27,7 +28,7 @@ export async function updateHabit(formData: FormData) {
                 craving,
                 response,
                 reward,
-                externalLink: externalLink || null, // Handle empty string as null
+                externalLink: externalLink || null,
             },
         });
     } catch (error) {
@@ -36,8 +37,8 @@ export async function updateHabit(formData: FormData) {
     }
 
     revalidatePath("/admin/habits");
-    revalidatePath("/admin/users/[userId]"); // Revalidate assignment pages too
-    revalidatePath("/"); // Revalidate dashboard
+    revalidatePath("/admin/users/[userId]");
+    revalidatePath("/");
 }
 
 export async function createHabit(formData: FormData) {
@@ -48,15 +49,29 @@ export async function createHabit(formData: FormData) {
     const response = formData.get("response") as string;
     const reward = formData.get("reward") as string;
     const externalLink = formData.get("externalLink") as string;
-    const companyId = "foresvi-hq"; // Hardcoded for prototype
+    const companyId = "foresvi-hq";
 
     if (!name || !topic) {
         throw new Error("Nombre y Tema son obligatorios");
     }
 
+    const normalizedName = name.trim();
+
+    const existing = await prisma.habit.findFirst({
+        where: {
+            name: { equals: normalizedName, mode: 'insensitive' },
+            companyId,
+            deletedAt: null
+        }
+    });
+
+    if (existing) {
+        throw new Error(`El hábito global "${normalizedName}" ya existe.`);
+    }
+
     await prisma.habit.create({
         data: {
-            name,
+            name: normalizedName,
             topic,
             cue: cue || "",
             craving: craving || "",
@@ -71,8 +86,6 @@ export async function createHabit(formData: FormData) {
     revalidatePath("/");
 }
 
-import { parse } from 'csv-parse/sync';
-
 export async function importHabitsFromCSV(formData: FormData) {
     try {
         const file = formData.get('csvFile') as File;
@@ -83,12 +96,10 @@ export async function importHabitsFromCSV(formData: FormData) {
 
         const text = await file.text();
 
-        // Check if text is empty or meaningless
         if (!text || text.trim().length === 0) {
             return { success: false, error: "El archivo está vacío." };
         }
 
-        // SMART PARSING: Scan first 10 lines to find headers and delimiter
         const lines = text.split(/\r\n|\n|\r/);
         const searchDepth = Math.min(lines.length, 10);
 
@@ -103,9 +114,7 @@ export async function importHabitsFromCSV(formData: FormData) {
             if (!line) continue;
 
             for (const delim of delimiters) {
-                // Count occurrences of this delimiter in this line
                 const count = line.split(delim).length - 1;
-                // Heuristic: Headers usually have at least 2 columns
                 if (count > maxDelimiterCount && count >= 2) {
                     maxDelimiterCount = count;
                     bestDelimiter = delim;
@@ -116,7 +125,6 @@ export async function importHabitsFromCSV(formData: FormData) {
 
         console.log(`Smart Import: Delimiter '${bestDelimiter}' found at line ${headerLineIndex + 1} with ${maxDelimiterCount} cols.`);
 
-        // If no delimiter found, fallback to default (probably comma, or file is just one column)
         if (maxDelimiterCount === 0) {
             const firstLine = lines[0] || "";
             if (firstLine.includes(";")) bestDelimiter = ";";
@@ -129,7 +137,7 @@ export async function importHabitsFromCSV(formData: FormData) {
             trim: true,
             bom: true,
             delimiter: bestDelimiter,
-            from_line: headerLineIndex + 1, // csv-parse is 1-based
+            from_line: headerLineIndex + 1,
             relax_quotes: true,
             relax_column_count: true
         }) as any[];
@@ -139,7 +147,6 @@ export async function importHabitsFromCSV(formData: FormData) {
         let successCount = 0;
         let errorCount = 0;
 
-        // Helper to find value case-insensitively
         const getValue = (record: any, keys: string[]) => {
             const recordKeys = Object.keys(record);
             for (const key of keys) {
@@ -199,7 +206,6 @@ export async function importHabitsFromCSV(formData: FormData) {
         revalidatePath("/admin/habits");
         revalidatePath("/");
 
-        // Return debug info if everything failed
         const firstRecordKeys = records.length > 0 ? Object.keys(records[0]).join(", ") : "None";
         return {
             success: true,
@@ -214,12 +220,10 @@ export async function importHabitsFromCSV(formData: FormData) {
     }
 }
 
-// NEW: Soft Delete Implementation
 export async function deleteHabit(habitId: string) {
     if (!habitId) throw new Error("ID required");
 
     try {
-        // Soft delete: Mark as deleted and inactive
         await prisma.habit.update({
             where: { id: habitId },
             data: { deletedAt: new Date() }
@@ -262,9 +266,38 @@ export async function createPrivateHabit(userId: string, formData: FormData) {
 
     if (!name || !topic) throw new Error("Nombre y Tema requeridos");
 
+    const normalizedName = name.trim();
+
+    const existingPrivate = await prisma.habit.findFirst({
+        where: {
+            creatorId: userId,
+            name: { equals: normalizedName, mode: 'insensitive' },
+            deletedAt: null
+        }
+    });
+
+    if (existingPrivate) {
+        const existingAssignment = await prisma.assignment.findUnique({
+            where: { userId_habitId: { userId, habitId: existingPrivate.id } }
+        });
+
+        if (!existingAssignment) {
+            await prisma.assignment.create({
+                data: { userId, habitId: existingPrivate.id, isActive: true }
+            });
+        } else if (!existingAssignment.isActive) {
+            await prisma.assignment.update({
+                where: { id: existingAssignment.id },
+                data: { isActive: true }
+            });
+        }
+        revalidatePath(`/admin/users/${userId}`);
+        return;
+    }
+
     const habit = await prisma.habit.create({
         data: {
-            name,
+            name: normalizedName,
             topic,
             cue: (formData.get("cue") as string) || "",
             craving: (formData.get("craving") as string) || "",
@@ -295,7 +328,7 @@ export async function promoteHabitToGlobal(habitId: string) {
         where: { id: habitId },
         data: {
             isGlobal: true,
-            creatorId: null // Make it shared
+            creatorId: null
         }
     });
 
