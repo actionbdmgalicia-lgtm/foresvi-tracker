@@ -53,17 +53,27 @@ export default async function DashboardPage() {
       }
     });
 
-    // Define the explicit topic order based on user request
-    const TOPIC_ORDER: Record<string, number> = {
-      'DESTINO': 1,
-      'DINERO': 2,
-      'GESTION_DEL_TIEMPO': 3,
-      'SERVICIO': 4,
-      'MARKETING_Y_VENTAS': 5,
-      'SISTEMATIZACION': 6,
-      'EQUIPO': 7,
-      'SINERGIA': 8,
-      'RESULTADOS': 9
+    // Helper for robust sorting (matches HabitMatrix logic)
+    const getTopicRank = (topic: string) => {
+      if (!topic) return 99;
+      const t = topic.toUpperCase();
+
+      const match = t.match(/^\s*(\d+)/);
+      if (match) {
+        return parseInt(match[1], 10);
+      }
+
+      if (t.includes("DESTINO")) return 1;
+      if (t.includes("DINERO")) return 2;
+      if (t.includes("GESTION") || t.includes("TIEMPO")) return 3;
+      if (t.includes("SERVICIO")) return 4;
+      if (t.includes("MARKETING") || t.includes("VENTAS")) return 5;
+      if (t.includes("SISTEMA")) return 6;
+      if (t.includes("EQUIPO")) return 7;
+      if (t.includes("SINERGIA")) return 8;
+      if (t.includes("RESULTADOS")) return 9;
+
+      return 99;
     };
 
     // Map to the shape expected by Dashboard (Habit + Customizations)
@@ -83,9 +93,18 @@ export default async function DashboardPage() {
     })
       .filter((h): h is NonNullable<typeof h> => h !== null)
       .sort((a, b) => {
-        const orderA = TOPIC_ORDER[a.topic] || 99;
-        const orderB = TOPIC_ORDER[b.topic] || 99;
-        return orderA - orderB;
+        // 1. Consolidated Last
+        if (a.isConsolidated !== b.isConsolidated) {
+          return a.isConsolidated ? 1 : -1;
+        }
+
+        // 2. Topic Rank
+        const rankA = getTopicRank(a.topic || "");
+        const rankB = getTopicRank(b.topic || "");
+        if (rankA !== rankB) return rankA - rankB;
+
+        // 3. Name Alphabetical
+        return (a.name || "").localeCompare(b.name || "");
       });
 
     const activeAssignmentIds = assignments.map(a => a.id);
