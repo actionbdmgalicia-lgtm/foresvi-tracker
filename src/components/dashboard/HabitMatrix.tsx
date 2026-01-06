@@ -40,32 +40,44 @@ export const HabitMatrix = ({ habits, logs, weeks, onEditHabit }: HabitMatrixPro
         return acc;
     }, {} as Record<string, BolaStatus>);
 
-    const TOPIC_ORDER: Record<string, number> = {
-        'DESTINO': 1,
-        'DINERO': 2,
-        'GESTION_DEL_TIEMPO': 3,
-        'SERVICIO': 4,
-        'MARKETING_Y_VENTAS': 5,
-        'SISTEMATIZACION': 6,
-        'EQUIPO': 7,
-        'SINERGIA': 8,
-        'RESULTADOS': 9
+    const getTopicRank = (topic: string) => {
+        if (!topic) return 99;
+        const t = topic.toUpperCase();
+
+        // 1. Try leading number (User manual override e.g. "1. DESTINO")
+        const match = t.match(/^(\d+)/);
+        if (match) {
+            return parseInt(match[1], 10);
+        }
+
+        // 2. Keyword fallback for standard topics
+        if (t.includes("DESTINO")) return 1;
+        if (t.includes("DINERO")) return 2;
+        if (t.includes("GESTION") || t.includes("TIEMPO")) return 3;
+        if (t.includes("SERVICIO")) return 4;
+        if (t.includes("MARKETING") || t.includes("VENTAS")) return 5;
+        if (t.includes("SISTEMA")) return 6;
+        if (t.includes("EQUIPO")) return 7;
+        if (t.includes("SINERGIA")) return 8;
+        if (t.includes("RESULTADOS")) return 9;
+
+        return 99;
     };
 
     // Sort habits:
     // 1. NON-Consolidated first (Active)
-    // 2. Topic Order
+    // 2. Topic Rank (Number or Keyword)
     // 3. Name Alphabetical
     const sortedHabits = [...habits].sort((a, b) => {
         if (a.isConsolidated !== b.isConsolidated) {
             return a.isConsolidated ? 1 : -1;
         }
 
-        const topicOrderA = TOPIC_ORDER[a.topic] || 99;
-        const topicOrderB = TOPIC_ORDER[b.topic] || 99;
+        const rankA = getTopicRank(a.topic || "");
+        const rankB = getTopicRank(b.topic || "");
 
-        if (topicOrderA !== topicOrderB) {
-            return topicOrderA - topicOrderB;
+        if (rankA !== rankB) {
+            return rankA - rankB;
         }
 
         return (a.name || "").localeCompare(b.name || "");
