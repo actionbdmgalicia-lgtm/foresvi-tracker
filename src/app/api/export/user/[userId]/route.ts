@@ -103,62 +103,94 @@ export async function GET(
         });
     });
 
-    // --- SHEET 3: EVOLUCIÓN VISUAL (CALENDARIO) ---
+    // --- SHEET 3: EVOLUCIÓN VISUAL (MATRIZ WEB) ---
     const sheetEvolution = workbook.addWorksheet("Evolución Visual");
 
-    // 1. Prepare Columns: Period + Each Habit
-    const habitColumns = assignments.map(a => ({
-        header: (a.customName || a.habit.name).toUpperCase(), // Vertical headers usually look better in upper
-        key: a.id,
-        width: 5, // Narrow columns for "visual" look
-    }));
-
-    sheetEvolution.columns = [
-        { header: 'PERIODO', key: 'period', width: 15 },
-        ...habitColumns
-    ];
-
-    // Rotate Habit Headers for compactness
-    const headerRow = sheetEvolution.getRow(1);
-    headerRow.height = 120; // Tall header
-    headerRow.alignment = { textRotation: 90, vertical: 'bottom', horizontal: 'center' };
-    headerRow.font = { bold: true };
-
-    // 2. Data Rows
-    const distinctPeriods = Array.from(new Set(logs.map(l => l.periodIdentifier))).sort().reverse();
-    const periodMap = new Map<string, any>(); // Period -> { period: string, habitId: status }
-
-    // Init rows
-    distinctPeriods.forEach(p => periodMap.set(p, { period: p }));
-
-    // Fill data
-    logs.forEach(log => {
-        const rowData = periodMap.get(log.periodIdentifier);
-        if (rowData) {
-            rowData[log.assignmentId] = log.status;
+    // 1. Determine Periods Sorted Chronologically (Oldest -> Newest)
+    // We infer order by the earliest 'loggedAt' timestamp associated with each period label
+    const periodMiniMap = new Map<string, number>();
+    logs.forEach(l => {
+        const existing = periodMiniMap.get(l.periodIdentifier);
+        const currentTs = new Date(l.loggedAt).getTime();
+        // We want the min date for this period to sort correctly
+        if (existing === undefined || currentTs < existing) {
+            periodMiniMap.set(l.periodIdentifier, currentTs);
         }
     });
 
-    // Add Rows
-    distinctPeriods.forEach(p => {
-        sheetEvolution.addRow(periodMap.get(p));
+    // Sort periods ascending (Oldest first, matching Web Left-to-Right)
+    const sortedPeriods = Array.from(periodMiniMap.keys()).sort((a, b) => {
+        return (periodMiniMap.get(a) || 0) - (periodMiniMap.get(b) || 0);
     });
 
-    // 3. CONDITIONAL FORMATTING (Visual Traffic Light)
-    // ExcelJS iterate rows to apply styles
+    // 2. Define Columns
+    // First col is Habit Name, rest are Periods
+    const periodColumns = sortedPeriods.map(p => ({
+        header: p,
+        key: p,
+        width: 6,
+        style: { alignment: { horizontal: 'center' as const } }
+    }));
+
+    sheetEvolution.columns = [
+        { header: 'HÁBITO', key: 'habit', width: 40 },
+        ...periodColumns
+    ];
+
+    // Style Header Row
+    const evoHeader = sheetEvolution.getRow(1);
+    evoHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    evoHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF003349' } };
+    evoHeader.alignment = { horizontal: 'center' };
+
+    // 3. Add Data Rows (One per Habit)
+    // Create a fast lookup for logs: assignmentId-period -> status
+    const logLookup = new Map<string, string>();
+    logs.forEach(l => logLookup.set(`${l.assignmentId}-${l.periodIdentifier}`, l.status));
+
+    assignments.forEach(a => {
+        const rowValues: any = {
+            habit: (a.customName || a.habit.name).toUpperCase()
+        };
+
+        sortedPeriods.forEach(p => {
+            // Find status
+            let status = logLookup.get(`${a.id}-${p}`);
+
+            // Logic for Consolidated: If no log (undefined/NEGRA) + Consolidated => VERDE
+            if (!status && a.isConsolidated) {
+                status = "VERDE";
+            }
+            // If explicit status is NEGRA, it stays NEGRA unless consolidated logic above handles the 'missing' case.
+            // Wait, if status IS 'NEGRA' (explicit log), and Consolidated, logic says treating it as VERDE in dashboard calculation.
+            // Let's match Dashboard logic:
+            // if (status === "NEGRA" && habit.isConsolidated) status = "VERDE";
+
+            if ((!status || status === 'NEGRA') && a.isConsolidated) {
+                status = "VERDE";
+            }
+
+            rowValues[p] = status || "NEGRA";
+        });
+
+        sheetEvolution.addRow(rowValues);
+    });
+
+    // 4. Conditional Formatting (Colors)
     sheetEvolution.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return; // Skip header
 
         row.eachCell((cell, colNumber) => {
-            if (colNumber === 1) return; // Skip Period Column
+            if (colNumber === 1) return; // Skip Habit Name Column
 
             const val = cell.value;
             let color = '';
 
+            // Using standard palette colors matching the Web
             if (val === 'VERDE') color = 'FF4ADE80'; // Green 400
             else if (val === 'AMARILLA') color = 'FFFACC15'; // Yellow 400
             else if (val === 'ROJA') color = 'FFF87171'; // Red 400
-            else if (val === 'NEGRA' || val === null) color = 'FFE5E7EB'; // Gray 200
+            else if (val === 'NEGRA') color = 'FFF3F4F6'; // Gray 100
 
             if (color) {
                 cell.fill = {
@@ -166,11 +198,11 @@ export async function GET(
                     pattern: 'solid',
                     fgColor: { argb: color }
                 };
-                // Hide text for purely visual look? Or keep it for accessibility? 
-                // Let's keep text but make it small/transparent if requested visually, 
-                // but usually seeing text "VERDE" helps if printing B&W.
-                // Let's center it.
-                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+                // Text styling (make it subtle or match bg to hide, but text is useful for accessibility/printing)
+                // Let's use a dark gray for text so it's readable but the color is the main thing
+                cell.font = { size: 8, color: { argb: 'FF374151' } }; // Gray 700
+
                 cell.border = {
                     top: { style: 'thin', color: { argb: 'FFFFFFFF' } },
                     left: { style: 'thin', color: { argb: 'FFFFFFFF' } },
