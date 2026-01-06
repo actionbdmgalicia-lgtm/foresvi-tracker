@@ -33,11 +33,43 @@ const SCORES: Record<BolaStatus, number> = {
 export const HabitMatrix = ({ habits, logs, weeks, onEditHabit }: HabitMatrixProps) => {
     // Transform logs to a map for easy lookup: key = assignmentId-periodIdentifier
     // logs have: assignmentId, periodIdentifier, status
+    // Map logs...
     const logsMap = logs.reduce((acc, log) => {
         const key = `${log.assignmentId}-${log.periodIdentifier}`;
         acc[key] = log.status;
         return acc;
     }, {} as Record<string, BolaStatus>);
+
+    const TOPIC_ORDER: Record<string, number> = {
+        'DESTINO': 1,
+        'DINERO': 2,
+        'GESTION_DEL_TIEMPO': 3,
+        'SERVICIO': 4,
+        'MARKETING_Y_VENTAS': 5,
+        'SISTEMATIZACION': 6,
+        'EQUIPO': 7,
+        'SINERGIA': 8,
+        'RESULTADOS': 9
+    };
+
+    // Sort habits:
+    // 1. NON-Consolidated first (Active)
+    // 2. Topic Order
+    // 3. Name Alphabetical
+    const sortedHabits = [...habits].sort((a, b) => {
+        if (a.isConsolidated !== b.isConsolidated) {
+            return a.isConsolidated ? 1 : -1;
+        }
+
+        const topicOrderA = TOPIC_ORDER[a.topic] || 99;
+        const topicOrderB = TOPIC_ORDER[b.topic] || 99;
+
+        if (topicOrderA !== topicOrderB) {
+            return topicOrderA - topicOrderB;
+        }
+
+        return (a.name || "").localeCompare(b.name || "");
+    });
 
     // Optimistic UI could be complex with a map, let's try simple useState first initialized with logs
     // Actually, simple optimistic:
@@ -131,7 +163,7 @@ export const HabitMatrix = ({ habits, logs, weeks, onEditHabit }: HabitMatrixPro
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {habits.map((habit) => (
+                        {sortedHabits.map((habit) => (
                             <tr key={habit.id} className="group hover:bg-gray-50 transition-colors">
                                 {/* Sticky Row Header (Habit Name) */}
                                 <td className="sticky left-0 bg-white group-hover:bg-gray-50 p-4 shadow-[2px_0_5px_rgba(0,0,0,0.05)] z-10 border-r border-gray-100">
