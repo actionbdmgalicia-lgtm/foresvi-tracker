@@ -359,6 +359,10 @@ export default function DashboardClient({ user, habits, logs, isImpersonating }:
       </div>
 
       <EditHabitModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} habit={editingHabit} />
+
+      <div className="text-center py-4 text-[10px] text-gray-300 font-mono opacity-50">
+        Foresvi Tracker v2.2.0 (Stable Sort)
+      </div>
     </div>
   );
 }
