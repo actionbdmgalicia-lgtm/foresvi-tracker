@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Edit2, Check, X, ChevronDown, ChevronUp, Lock, Globe } from "lucide-react";
+import { Edit2, Check, X, ChevronDown, ChevronUp, Lock, Globe, Users } from "lucide-react";
 import clsx from "clsx";
 import { toggleHabitAssignment, updateAssignmentCustomization } from "@/app/actions/assignment-actions";
 import { promoteHabitToGlobal } from "@/app/actions/habit-actions";
@@ -42,7 +42,11 @@ export function UserHabitCard({ habit, assignment, userId, isAssigned }: UserHab
                             </span>
                         )}
                     </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 items-center">
+                        <div className="flex items-center gap-1 text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200 h-fit" title="Usuarios totales asignados">
+                            <Users className="w-3 h-3 text-gray-400" />
+                            <span className="font-medium">{habit._count?.assignments || 0}</span>
+                        </div>
                         <p className="text-xs text-gray-500"><strong className="text-brand-secondary">Señal:</strong> {cue}</p>
                         <p className="text-xs text-gray-500"><strong className="text-green-600">Recompensa:</strong> {reward}</p>
                     </div>

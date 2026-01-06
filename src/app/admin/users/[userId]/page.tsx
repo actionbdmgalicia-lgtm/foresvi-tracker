@@ -40,6 +40,11 @@ export default async function AssignmentPage({ params }: Props) {
                 { companyId: user.companyId, creatorId: userId }
             ]
         },
+        include: {
+            _count: {
+                select: { assignments: true }
+            }
+        },
         orderBy: { topic: 'asc' }
     });
 
@@ -52,10 +57,28 @@ export default async function AssignmentPage({ params }: Props) {
     const distinctTopics = await prisma.habit.findMany({
         where: { deletedAt: null },
         select: { topic: true },
-        distinct: ['topic'],
-        orderBy: { topic: 'asc' }
+        distinct: ['topic']
     });
-    const availableTopics = distinctTopics.map(t => t.topic);
+
+    const TOPIC_ORDER: Record<string, number> = {
+        'DESTINO': 1,
+        'DINERO': 2,
+        'GESTION_DEL_TIEMPO': 3,
+        'SERVICIO': 4,
+        'MARKETING_Y_VENTAS': 5,
+        'SISTEMATIZACION': 6,
+        'EQUIPO': 7,
+        'SINERGIA': 8,
+        'RESULTADOS': 9
+    };
+
+    const availableTopics = distinctTopics
+        .map(t => t.topic)
+        .sort((a, b) => {
+            const orderA = TOPIC_ORDER[a] || 99;
+            const orderB = TOPIC_ORDER[b] || 99;
+            return orderA - orderB;
+        });
 
     // Create a map for fast lookup of assignment by habitId
     // We map the whole assignment object to access custom fields
